@@ -1,12 +1,13 @@
--- Obter o jogador e o mouse
+-- Variáveis principais
 local player = game.Players.LocalPlayer
 local mouse = player:GetMouse()
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 local flying = false
 local flySpeed = 50  -- Velocidade inicial do voo
 
--- Criando a ScreenGui
+-- Criando a UI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "FlyGui"
 screenGui.Parent = player:WaitForChild("PlayerGui")
@@ -23,8 +24,8 @@ flyButton.TextSize = 24
 flyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 flyButton.Parent = screenGui
 
--- Criando o Slider para controlar a velocidade do voo
-local speedSlider = Instance.new("TextButton")
+-- Criando o slider de velocidade
+local speedSlider = Instance.new("TextBox")
 speedSlider.Name = "SpeedSlider"
 speedSlider.Size = UDim2.new(0, 200, 0, 50)
 speedSlider.Position = UDim2.new(0, 20, 0, 80)
@@ -40,22 +41,24 @@ local function startFlying()
     if not flying then
         flying = true
         humanoid.PlatformStand = true
+        humanoidRootPart.Anchored = true
+
+        -- Criação do BodyVelocity para movimento no ar
         local bodyVelocity = Instance.new("BodyVelocity")
         bodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
         bodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        bodyVelocity.Parent = character:WaitForChild("HumanoidRootPart")
+        bodyVelocity.Parent = humanoidRootPart
         
+        -- Enquanto o voo estiver ativado, o personagem vai se mover em direção ao mouse
         while flying do
-            bodyVelocity.Velocity = Vector3.new(
-                mouse.Hit.p.X - character.HumanoidRootPart.Position.X,
-                0,  -- Mantém o voo nivelado
-                mouse.Hit.p.Z - character.HumanoidRootPart.Position.Z
-            ).Unit * flySpeed
+            local direction = (mouse.Hit.p - humanoidRootPart.Position).unit
+            bodyVelocity.Velocity = Vector3.new(direction.X, 0, direction.Z) * flySpeed
             wait(0.1)
         end
         
         bodyVelocity:Destroy()  -- Remove o bodyVelocity quando o voo for desativado
         humanoid.PlatformStand = false
+        humanoidRootPart.Anchored = false
     end
 end
 
@@ -75,9 +78,13 @@ flyButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Atualiza a velocidade do voo com o slider
-speedSlider.MouseButton1Click:Connect(function()
-    local newSpeed = math.random(10, 100)  -- Gera um valor aleatório para a velocidade
-    flySpeed = newSpeed
-    speedSlider.Text = "Velocidade: " .. newSpeed
+-- Atualiza a velocidade do voo com o slider de texto
+speedSlider.FocusLost:Connect(function()
+    local newSpeed = tonumber(speedSlider.Text)
+    if newSpeed and newSpeed > 0 then
+        flySpeed = newSpeed
+        speedSlider.Text = "Velocidade: " .. flySpeed
+    else
+        speedSlider.Text = "Velocidade: " .. flySpeed  -- Restaura a velocidade se a entrada for inválida
+    end
 end)
